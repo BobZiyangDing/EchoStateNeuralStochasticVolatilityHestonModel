@@ -1,88 +1,39 @@
-import pandas as pd
-import numpy as np
+import numpy
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import matplotlib as mpl
 import seaborn as sns
 import math
 import os
 from sklearn.linear_model import Ridge
-from sklearn.model_selection import train_test_split
 
-
-class ESN():
-    """
-    @param:
-    W_in
-    W
-    W_fb
-    
-    """
-    def __init__(self, input_dim, hidden_dim, fb_dim, spectral_radius, connectivity, leak):
-    """
-    initialize W_in, W, W_fb, leak
-    """
-        # Making inner transition sparse matrix W
-        nans = np.random.randint(0, int(1/connectivity)-1 , size=(hidden_dim, hidden_dim))
-        W = np.random.uniform(-0.4, 0.4, hidden_dim*hidden_dim).reshape([hidden_dim, hidden_dim])
-        W = np.where(nans, np.nan, W)
-        W = np.nan_to_num(W)
-        E, _ = np.linalg.eig(W)
-        e_max = np.max(np.abs(E))
-        W /= np.abs(e_max)/spectral_radius
-        
-        # Making input matrix W_in
-        W_in = np.random.uniform(-1, 1, hidden_dim*input_dim).reshape([hidden_dim, input_dim])
-        W_in = W_in / (np.linalg.svd(W_in)[1].tolist()[0]*1.2)
-        
-        # Making feedback matrix W_fb
-        W_fb = np.random.uniform(-1, 1, hidden_dim*fb_dim).reshape([hidden_dim, fb_dim])
-        W_fb = W_fb / (np.linalg.svd(W_in)[1].tolist()[0]*1.2)
-    
-        self.W = W
-        self.W_in = W_in 
-        self.W_fb = W_fb
-        self.leak = leak
-        
-        del W, W_in, W_fb
-            
-    def makeState(self, X, Y, cv_start, cv_end, cv_step, ):
-        hidden_dim = self.W.shape[0]
-        u_len = X.shape[0]
-        
-        state_list = [np.zeros([hidden_dim]), np.zeros([hidden_dim])]
-        for i in range(u_len):
-            state_next = (1-leak)*state_next[-2] + leak * np.tanh( np.matmul(self.W_in, X[i]) + np.matmul(self.W, state_next[-1] ) +  np.random.rand(hidden_dim))
-            state_list.append(state_next)
-        states = np.array(state_list[1:]).reshape(u_len+1, hidden_dim)
-
-        del state_list
-        
-        X = np.concatenate([states[:-1,:], X], axis=1)
-        X = X[:-1, :]
-        
-        return states
-        
-
-def EchoStateTest(x_dim, connectivity, spectral_radius,
+def EchoStateDeepTest(x_dim, connectivity, spectral_radius,
                   u_num, u_dim, u_mag,
                   leak, cutout, forget, 
-                  cv_start, cv_end, cv_step, val_cut, verbose, input_U, target_Y):
+                  cv_start, cv_end, cv_step, val_cut, verbose, input_U, target_Y, resvoir_num):
     if verbose:
         print()
         print("-----------------------------------------------Making Transition and input matrix------------------------------------------------")
         print()
 
     # Making inner transition sparse matrix W
-    nans = np.random.randint(0, int(1/connectivity)-1 , size=(x_dim, x_dim))
-    W = np.random.uniform(-0.4, 0.4, x_dim*x_dim).reshape([x_dim, x_dim])
-    W = np.where(nans, np.nan, W)
-    W = np.nan_to_num(W)
-    E, _ = np.linalg.eig(W)
-    e_max = np.max(np.abs(E))
-    W /= np.abs(e_max)/spectral_radius   
-
-
+    W_list = []
+    for i in range(resvoir_num):
+        nans = np.random.randint(0, int(1/connectivity)-1 , size=(x_dim, x_dim))
+        W = np.random.uniform(-0.4, 0.4, x_dim*x_dim).reshape([x_dim, x_dim])
+        W = np.where(nans, np.nan, W)
+        W = np.nan_to_num(W)
+        E, _ = np.linalg.eig(W)
+        e_max = np.max(np.abs(E))
+        W /= np.abs(e_max)/spectral_radius   
+        W_list.append(W)
+        
+    #
+    W_trans_list = []
+    for i in range(resvoir_num-1):
+        W_trans = np.random.uniform(-1, 1, x_dim*x_dim).reshape([x_dim, x_dim])
+        W_trans_list.append(W_trans) 
+        
+        
     # Making input matrix W_in
     W_in = np.random.uniform(-1, 1, x_dim*u_dim).reshape([x_dim, u_dim])
     W_in = W_in / (np.linalg.svd(W_in)[1].tolist()[0]*1.2)
@@ -95,14 +46,30 @@ def EchoStateTest(x_dim, connectivity, spectral_radius,
         print("-----------------------------------------------Making input and inner states------------------------------------------------------")
         print()
 
+        
+        
+        
     # Making Inner States
+    X = u
+       
+    x_lists = []
     x_list = [np.zeros([x_dim]), np.zeros([x_dim])]
-    
-    for i in range(u_num):
-        x_next = (1-leak)*x_list[-2] + leak * np.tanh( np.matmul(W_in, u[i]) + np.matmul(W, x_list[-1] ) +  np.random.rand(x_dim))
-        x_list.append(x_next)
 
-    states = np.array(x_list[1:]).reshape(u_num+1, x_dim)
+    # 1st reservoir
+    for i in range(u_num):
+        x_next = (1-leak)*x_list[-2] + leak * np.tanh( np.matmul(W_in, u[i]) + np.matmul(W_list[0], x_list[-1] ) +  np.random.rand(x_dim))
+        x_list.append(x_next)
+    x_lists.append(x_list)
+    
+    # 2-last reservoirs
+    for res in range(resvoir_num-1):
+        x_list = [np.zeros([x_dim]), np.zeros([x_dim])]
+        for i in range(u_num):
+            x_next = (1-leak)*x_list[-2] + leak * np.tanh( np.matmul(W_trans_list[res], x_lists[res][i+2]) + np.matmul(W_list[res], x_list[-1] ) +  np.random.rand(x_dim))
+            x_list.append(x_next)
+        x_lists.append(x_list)
+        
+    states = np.array(x_lists[-1][1:]).reshape(u_num+1, x_dim)
 
     if verbose:
         print("Inner States: # of samples x # of dimension:", str(states.shape))
@@ -112,14 +79,17 @@ def EchoStateTest(x_dim, connectivity, spectral_radius,
         print("------------------------------------------------Concatenate data and Y sequence data------------------------------------------------")
         print()
 
-    # Making Concatenated data
-    
+        # Making Concatenated data
+
     X = np.concatenate([states[:-1,:], u], axis=1)
     X = X[:-1, :]
 
+    
+    
+    
+    
     # Faking Target sequence
     Y = target_Y
-    print("Y shape:", Y.shape)
 
 
     if verbose:
@@ -213,8 +183,7 @@ def EchoStateTest(x_dim, connectivity, spectral_radius,
     # Producing Graphic Visualization
 
     # 后面100个，真实值与预测的
-    mpl.style.use("seaborn")
-    fig, ax = plt.subplots(figsize=(20, 3))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.set_title('Predict and Groud Truth'.format("seaborn"), color='C0')   
 
     ax.plot([j for j in range(cutout)], [predict_Y[j] for j in range(predict_Y.shape[0])])
@@ -224,20 +193,25 @@ def EchoStateTest(x_dim, connectivity, spectral_radius,
     # 所有的，真实值与预测的
     hat_Y = reg.predict(X)
 
-
-    mpl.style.use("seaborn")
-    fig, ax = plt.subplots(figsize=(20, 10))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.set_title('Predict and Groud Truth everything'.format("seaborn"), color='C1')   
 
     ax.plot([j for j in range(forget, u_num-1)], [Y[j] for j in range(forget, u_num-1)], ":", alpha = 0.7)
     ax.plot([j for j in range(forget, u_num-1)], [hat_Y[j] for j in range(forget, u_num-1)], "red", linewidth=1)
+    ax.axvline(x=forget, ls = "--", c = "yellow")
+    ax.axvline(x=u_num - cutout, ls = "--", c = "yellow")
+
+    
+    # Different in prediction
+    fig, ax = plt.subplots(figsize=(20, 5))
+    ax.set_title('Predict and Groud Truth everything'.format("seaborn"), color='C1')   
+
     ax.plot([j for j in range(forget, u_num-1)], [Y[j]-hat_Y[j] for j in range(forget, u_num-1)], "black", linewidth=1)
     ax.axvline(x=forget, ls = "--", c = "yellow")
     ax.axvline(x=u_num - cutout, ls = "--", c = "yellow")
 
 
     # all predictor signals
-    mpl.style.use("seaborn")
     fig, ax = plt.subplots(figsize=(20, 5))
     ax.set_title('all predictor signals'.format("seaborn"), color='C1')   
     for i in range(1):
