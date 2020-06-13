@@ -98,7 +98,7 @@ class DataCleaner:
         del month_data
 
         # add processed data info
-        self.num_days += day_delta - self.length_return
+        self.num_days += day_delta
         self.num_observation = self.num_days*top
 
         # verbose
@@ -116,12 +116,15 @@ class DataCleaner:
         :param top: # of mostly traded ticker
         :return: void
         """
+        self.top = top
         days, records = self.trim(data_name, top)
         for i in range(len(days)):
             placeholder[days[i]] = [records[i], None, None]
         append_risk_return(risk_data_name, placeholder, self.length_return)
 
-    def get_num_days(self):
+    def get_num_days(self, data):
+        self.num_days = len(list(data.keys()))
+        self.num_observation = self.num_days*self.top
         print("Attached {} days of data".format(self.num_days))
         return self.num_days
 
