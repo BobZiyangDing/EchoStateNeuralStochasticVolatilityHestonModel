@@ -33,7 +33,7 @@ class EchoState:
         self.G = G
 
         # Making input matrix self.G_in
-        self.G_in = np.random.uniform(-1, 1, self.theta_dim * self.u_dim).reshape([self.theta_dim, self.u_dim])
+        self.G_in = np.random.uniform(0, 1, self.theta_dim * self.u_dim).reshape([self.theta_dim, self.u_dim])
         u, s, vh = np.linalg.svd(self.G_in)
         scale = s[0]
         self.G_in = self.G_in / (scale * 1.2)
