@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# File : echotorch/nn/ESN.py
+# File : echotorch/nn/ESN_nobias.py
 # Description : An Echo State Network module.
 # Date : 26th of January, 2018
 #
