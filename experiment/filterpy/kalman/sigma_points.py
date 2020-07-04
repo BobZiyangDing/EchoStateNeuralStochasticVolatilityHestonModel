@@ -15,11 +15,16 @@ https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python
 This is licensed under an MIT license. See the readme.MD file
 for more information.
 """
-
 from __future__ import division
 import numpy as np
 from scipy.linalg import cholesky
 from filterpy.common import pretty_str
+from numpy.linalg import LinAlgError
+
+
+def check_symmetric(a, rtol=1e-05, atol=1e-08):
+    return np.allclose(a, a.T, rtol=rtol, atol=atol)
+
 
 class MerweScaledSigmaPoints(object):
 
@@ -95,7 +100,6 @@ class MerweScaledSigmaPoints(object):
 
     """
 
-
     def __init__(self, n, alpha, beta, kappa, sqrt_method=None, subtract=None):
         #pylint: disable=too-many-arguments
 
@@ -165,7 +169,14 @@ class MerweScaledSigmaPoints(object):
             P = np.atleast_2d(P)
 
         lambda_ = self.alpha**2 * (n + self.kappa) - n
-        U = self.sqrt((lambda_ + n)*P)
+        try:
+            U = self.sqrt((lambda_ + n)*P)
+        except LinAlgError:
+            print(min(np.diag(P).tolist()))
+            print(min(list(np.linalg.eig(P)[0])))
+            print(check_symmetric(P))
+            symmetric_P = (P+P.T)/2 + 200*np.eye(n)
+            U = self.sqrt((lambda_ + n) * symmetric_P)
 
         sigmas = np.zeros((2*n+1, n))
         sigmas[0] = x

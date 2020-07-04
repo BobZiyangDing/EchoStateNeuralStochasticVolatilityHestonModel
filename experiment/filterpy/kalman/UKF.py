@@ -652,6 +652,74 @@ class UnscentedKalmanFilter(object):
 
         return xs, ps, Ks, np.array(cvs)
 
+    def rts_smoother_alternative(self, Xs, Ps, fx=None, Qs=None, dts=None, UT=None, **fx_args):
+        if len(Xs) != len(Ps):
+            raise ValueError('Xs and Ps must have the same length')
+
+        n, dim_x = Xs.shape
+
+        if dts is None:
+            dts = [self._dt] * n
+        elif isscalar(dts):
+            dts = [dts] * n
+
+        if Qs is None:
+            Qs = [self.Q] * n
+
+        if UT is None:
+            UT = unscented_transform
+
+        # smoother gain
+        Ks = zeros((n, dim_x, dim_x))
+
+        num_sigmas = self._num_sigmas
+
+        xs, ps = Xs.copy(), Ps.copy()
+        cvs = []
+        sigmas_f = zeros((num_sigmas, dim_x))
+
+        G_idx = fx_args["G_idx"]
+        G_in_idx = fx_args["G_in_idx"]
+        b_idx = fx_args["b_idx"]
+        u_quad_s = fx_args["u_quad_s"]
+
+        for k in reversed(range(n-1)):
+            # create sigma points from state estimate, pass through state func
+            sigmas = self.points_fn.sigma_points(xs[k], ps[k])
+            if not fx:
+                for i in range(num_sigmas):
+                    sigmas_f[i] = self.fx(sigmas[i], dts[k])
+            else:
+                for i in range(num_sigmas):
+                    sigmas_f[i] = fx(sigmas[i], dts[k],
+                                     G_idx=G_idx,
+                                     G_in_idx=G_in_idx,
+                                     b_idx=b_idx,
+                                     u_quad_now=u_quad_s[k])
+
+            xb, Pb = UT(
+                sigmas_f, self.Wm, self.Wc, self.Q,
+                self.x_mean, self.residual_x)
+
+            # compute cross variance
+            Pxb = 0
+            for i in range(num_sigmas):
+                y = self.residual_x(sigmas_f[i], xb)
+                z = self.residual_x(sigmas[i], Xs[k])
+                Pxb += self.Wc[i] * outer(z, y)
+
+            # compute gain
+            K = dot(Pxb, self.inv(Pb))
+
+            # update the smoothed estimates
+            xs[k] += dot(K, self.residual_x(xs[k+1], xb))
+            ps[k] += dot(K, ps[k+1] - Pb).dot(K.T)
+            Ks[k] = K
+            cvs.insert(0, dot(ps[k+1], K.T))
+
+        return xs, ps, Ks, np.array(cvs)
+
+
     @property
     def log_likelihood(self):
         """
