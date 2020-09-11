@@ -1,0 +1,13 @@
+[MESSAGES CONTROL]
+disable=
+    bad-continuation,
+    duplicate-code,
+    fixme,
+    invalid-name
+
+[TYPECHECK]
+
+# List of members which are set dynamically and missed by pylint inference
+# system, and so shouldn't trigger E1101 when accessed. Python regular
+# expressions are accepted.
+ignored-modules=numpy.*
