@@ -67,19 +67,19 @@ def make_simulated_data(n_scenarios, n_steps, true_vol_std, topK, init_price, u_
     for _ in true_vol_mean:
         plt.plot(range(n_steps + 1), _, linewidth=1)
         plt.title("True Volatility Mean")
-    figure.show()
+#     figure.show()
 
     figure = plt.figure(figsize=(12.5, 2.5))
     for _ in us:
         plt.plot(range(n_steps + 1), _, linewidth=0.5)
         plt.title("Observed returns")
-    figure.show()
+#     figure.show()
 
     figure = plt.figure(figsize=(12.5, 2.5))
     for _ in ps:
         plt.plot(range(n_steps + 1), _, linewidth=1)
         plt.title("Observed Stock Price")
-    figure.show()
+#     figure.show()
 
     print("Shape of true_vol_mean is {}".format(true_vol_mean.shape))
     print("Shape of gen_vol_obs is {}".format(gen_vol_obs.shape))
