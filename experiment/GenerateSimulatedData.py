@@ -7,16 +7,13 @@ import warnings
 warnings.simplefilter('error')
 
 
-def make_simulated_data(topK, init_price, u_dim, num_test=25, num_valid=2):
+def make_simulated_data(n_scenarios, n_steps, true_vol_std, topK, init_price, u_dim, num_test=25, num_valid=2):
     np.random.seed(1234)
-    true_vol_std = 0.02
     bday_p_year = 252
 
-    generator = CoxIngersollRossProcess(mu=0.2, sigma=0.04, theta=10)
-    x0 = 0.2  # the start value of our process
+    generator = CoxIngersollRossProcess(mu=0.15, sigma=0.04, theta=10)
+    x0 = 0.15  # the start value of our process
     dt = 1 / bday_p_year  # the length of each time step in years
-    n_scenarios = 10  # the number of scenarios to generate
-    n_steps = 3 * bday_p_year  # the number of time steps per scenario-1
     random_state = 1234  # optional random_state for reproducibility
 
     # Generate risk free interest rate
@@ -44,13 +41,13 @@ def make_simulated_data(topK, init_price, u_dim, num_test=25, num_valid=2):
 
     # Generate some expiration Dates
     # Ts # to 2 years
-    mesh = 2 / (topK + 1)
+    mesh = 0.5 / (topK + 1)
     Ts = np.array(range(1, topK + 1)) * mesh
 
     # Generate some Strike Price
     # ps
-    Ks = ps[:, :, np.newaxis].repeat(topK, axis=2) + np.random.normal(0, 500 * gen_vol_obs * Ts,
-                                                                      (n_scenarios, n_timesteps, topK))
+    Ks = ps[:, :, np.newaxis].repeat(topK, axis=2) + np.random.normal(0, 100 * gen_vol_obs * Ts,
+                                                                      (n_scenarios, n_timesteps, topK) )
 
     # Generate some Option Prices
     # ys
@@ -105,7 +102,7 @@ def make_simulated_data(topK, init_price, u_dim, num_test=25, num_valid=2):
     rs = rs[:, u_dim-1:]
     Ks = Ks[:, u_dim-1:, :]
     ys = ys[:, u_dim-1:, :]
-    true_vol_mean = true_vol_mean[:, u_dim-1]
+    true_vol_mean = true_vol_mean[:, u_dim-1:]
     gen_vol_obs = gen_vol_obs[:, u_dim-1, :]
 
     print("[=======100%=======] After Truncation")
@@ -134,6 +131,8 @@ def make_simulated_data(topK, init_price, u_dim, num_test=25, num_valid=2):
                             "Strike": Ks[idx, i],
                             "Exercise Time": Ts_repeat[idx, i],
                             "risk ir": rs[0, i],
+                            "option price": ys[idx, i],
+                            "true vol": true_vol_mean[idx, i],
                             }
 
         for i in range(n_timesteps-num_test-num_valid, n_timesteps-num_test):
@@ -143,6 +142,8 @@ def make_simulated_data(topK, init_price, u_dim, num_test=25, num_valid=2):
                             "Strike": Ks[idx, i],
                             "Exercise Time": Ts_repeat[idx, i],
                             "risk ir": rs[0, i],
+                            "option price": ys[idx, i],
+                            "true vol": true_vol_mean[idx, i],
                             }
 
         for i in range(n_timesteps-num_test, n_timesteps):
@@ -152,9 +153,11 @@ def make_simulated_data(topK, init_price, u_dim, num_test=25, num_valid=2):
                             "Strike": Ks[idx, i],
                             "Exercise Time": Ts_repeat[idx, i],
                             "risk ir": rs[0, i],
+                            "option price": ys[idx, i],
+                            "true vol": true_vol_mean[idx, i],
                             }
         train.append(train_data)
         valid.append(valid_data)
         test.append(test_data)
 
-    return train, valid, test
+    return train, valid, test, true_vol_mean
