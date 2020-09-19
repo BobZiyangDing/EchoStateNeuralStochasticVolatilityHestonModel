@@ -1,0 +1,23 @@
+MANIFEST
+build
+dist
+_build
+docs/man/*.gz
+docs/source/api/generated
+docs/source/config/options
+docs/source/interactive/magics-generated.txt
+examples/daVinci Word Count/*.txt
+examples/testdill.py
+*.py[co]
+__pycache__
+*.egg-info
+*~
+*.bak
+.ipynb_checkpoints
+.tox
+.DS_Store
+\#*#
+.#*
+.coverage
+*coverage.xml
+.coverage.*
