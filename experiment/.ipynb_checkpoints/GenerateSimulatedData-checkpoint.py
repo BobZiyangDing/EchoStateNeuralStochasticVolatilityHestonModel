@@ -7,8 +7,7 @@ import warnings
 warnings.simplefilter('error')
 
 
-def make_simulated_data(n_scenarios, n_steps, true_vol_std, topK, init_price, u_dim, num_test=25, num_valid=2):
-    np.random.seed(1234)
+def make_simulated_data(n_scenarios, n_steps, true_vol_std, topK, init_price, u_dim, random_state, num_test=25, num_valid=2):
     bday_p_year = 252
 
     generator = CoxIngersollRossProcess(mu=0.15, sigma=0.04, theta=10)
