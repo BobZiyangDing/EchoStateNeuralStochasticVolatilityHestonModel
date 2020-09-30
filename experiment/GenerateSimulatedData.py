@@ -7,11 +7,10 @@ import warnings
 warnings.simplefilter('error')
 
 
-def make_simulated_data(n_scenarios, n_steps, true_vol_std, topK, init_price, u_dim, random_state, num_test=25, num_valid=2):
+def make_simulated_data(n_scenarios, n_steps, true_vol_std, topK, init_price, u_dim, random_state, x0=0.15, num_test=25, num_valid=2, theta=10):
     bday_p_year = 252
 
-    generator = CoxIngersollRossProcess(mu=0.15, sigma=0.04, theta=10)
-    x0 = 0.15  # the start value of our process
+    generator = CoxIngersollRossProcess(mu=0.15, sigma=0.04, theta=theta)
     dt = 1 / bday_p_year  # the length of each time step in years
     random_state = 1234  # optional random_state for reproducibility
 
